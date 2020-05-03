@@ -26,12 +26,13 @@
 
 #define cycle 833333 //nanoseconds
 #define sec 1000000000 //second in nanoseconds
+#define mili 1000000
 
 #define out (*(mapa+OE))&(~(1<<saida))	//pin output
 #define in  (*(mapa+OE))|(1<<saida)		//pin input
 
-#define low (*(mapa+DATAOUT))|(1<<saida)
-#define high  (*(mapa+DATAOUT))&(~(1<<saida))
+#define low		(*(mapa+DATAOUT))&(~(1<<saida))
+#define high	(*(mapa+DATAOUT))|(1<<saida)
 
 #define pin  (*(mapa+DATAIN)&(1<<saida))>>saida
 
@@ -110,7 +111,6 @@ void incNano(struct timespec *tRef, long t) //Ok
 	tRef->tv_nsec+=t;
 		if(tRef->tv_nsec > sec)
 		{
-			//printf("-- swap\n");
 			tRef->tv_nsec -= sec;
 			tRef->tv_sec++;
 		}
@@ -123,33 +123,37 @@ void cmdSend(struct timespec *tRef, char *cmd, int len) //Ok
 {
 	printf("\nSending command... - %s\n", cmd);
 	int c=0;
-	bool par = 0;
+	int par = 0;
+	//*(mapa+OE) = out;	//set pin as output
 	
-	*(mapa+OE) = out;	//set pin as output
-	while(len!=c)
+	while(len!=c)	//um caractere por vez
 	{
-		incNano(tRef, cycle+300); //acrescimo entre caracteres
+		incNano(tRef, cycle*1.5); //acrescimo entre caracteres
 		*(mapa+DATAOUT) = high;	//start bit espera um ciclo
+		printf("1");
 		incNano(tRef, cycle);
+		par=0;
 		
-		for(int i=0; i<8; i++) //data bits
+		for(int i=0; i<7; i++) //data bits
 		{
-			*(mapa+DATAOUT) = ( ((1&(cmd[c]>>i))==1)? high:low); //envia bit por bit invertido
-			par ^= (bool)pin;	//xor//set parity
+			*(mapa+DATAOUT) = ( ((1&(cmd[c]>>i))==1)? low:high); //envia bit por bit invertido
+			printf("%d",(*(mapa+DATAOUT)>>saida)&1);
+			par ^= pin;	//xor//set parity
 			incNano(tRef, cycle); //espera um ciclo
 		}
 		//parity bit e espera um ciclo
-		*(mapa+DATAOUT) = ((par==true)? high: low);
+		*(mapa+DATAOUT) = ((par&1==1)? high: low);
+		printf("%d",(*(mapa+DATAOUT)>>saida)&1);
 		incNano(tRef, cycle);
 		*(mapa+DATAOUT) = low; //stop bit
+		printf("%d ",(*(mapa+DATAOUT)>>saida)&1);
 		c++;
 	}
+	
 	incNano(tRef, cycle);
 	//abandonar controle da linha de dados em ate 7.5ms
 	//colocar pino em tree-state
 	*(mapa+OE) = in;
-	
-	
 return;
 }
 
@@ -254,12 +258,12 @@ return;
 
 void wake(struct timespec *tRef)
 {
-	*(mapa+OE) = in; //direction
+	*(mapa+OE) = out; //direction
 	clock_gettime(CLOCK_MONOTONIC, tRef);
 	*(mapa+DATAOUT) = high; //set datapin as high and wait 12ms
-	incNano(tRef, (long)(14.42*cycle));
-	*(mapa+DATAOUT) = low;//set datapin as low and wait 8,33ms
-	incNano(tRef, cycle*9);//espera 10, mas um esta em cmdSend
+	incNano(tRef, (long)(12*mili));
+	*(mapa+DATAOUT) = low; //set datapin as low and wait 8,33ms
+	incNano(tRef, 10*cycle);//espera 10, mas um esta em cmdSend
 return;
 }
 
@@ -269,30 +273,39 @@ char* sComm (int num, char *cmd[]) //melhorar retorno das informacoes
 	int i=1, c=0;
 	char res[100];
 	struct timespec tRef, tempo;
+	start = tRef.tv_nsec; //guarda tempo de inicio
 	
+	clock_gettime(CLOCK_MONOTONIC, &tRef);
 	wake(&tRef);
-	start = tRef.tv_nsec;	//guarda tempo de inicio
 	//reconhece comando em ate 100ms a partir daqui
 	
 	do
 	{
-		//enviar comando...
+		
+		//enviar comando... ---->> Testes indicam precisão em tempo maior que 4%
 		cmdSend(&tRef, cmd[i], strlen(cmd[i]));
+		
 		clock_gettime(CLOCK_MONOTONIC, &tempo); 
 		if ((tempo.tv_nsec)-(tRef.tv_nsec) > 100000) printf("cmdSend took too long to finish: %d\n\n", (tempo.tv_nsec)-(tRef.tv_nsec));
 		else printf("cmdSend sucessful\n\n");
 		
+
+		
 		int j=0;
-		while( j<300)
+		*(mapa+OE)=in;
+		printf("Leituras a cada 0.833ms:\n");
+		while( j<100)
 		{
 			j++;
 			clock_gettime(CLOCK_MONOTONIC, &tempo); 
 			incNano(&tempo, cycle);
 			printf("%d", pin);
+			if(j%100==0)printf("\n");
 		}
 		
 		//clock_gettime(CLOCK_MONOTONIC, &tRef);	//preciso zerar isso aqui? delay menor que 100000
 		
+		/*
 		ret=tRef.tv_nsec;
 		//sensor deve responder em ate 15ms [18 ciclos]
 		cmdRecv(&tRef, res);
@@ -312,10 +325,17 @@ char* sComm (int num, char *cmd[]) //melhorar retorno das informacoes
 			printf("%s\n", res);	//imprimir resposta para verificar
 			cmd[i] = res;
 		}
+		*/
 		i++;
 		dif = tRef.tv_nsec-start;
+		if(dif<=sec/1000) 
+		{
+			start = tRef.tv_nsec;
+			printf("time\n");	
+			wake(&tRef);
+		}
 	}
-	while (i<num && dif<=sec/1000);
+	while (i<num);
 	
 	
 return 0;
