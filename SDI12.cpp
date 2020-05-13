@@ -67,8 +67,7 @@ void cmdSend(struct timespec *tRef, char *cmd, int len) //nao ok
 		printf("%d ",(*(mapa+DATAOUT)>>saida)&1);
 		c++;
 	}
-	
-	incNano(tRef, cycle);
+	printf("\n");
 	//abandonar controle da linha de dados em ate 7.5ms
 	//colocar pino em tree-state
 	*(mapa+OE) = in;
@@ -76,6 +75,100 @@ return;
 }
 
 
+
+
+void charStream(struct timespec *tRef, char *c)
+{
+	printf("charStream in... ");
+	long dif, now;
+	bool par=0;
+	now = tRef->tv_nsec;
+	do
+	{
+		incNano(tRef, cycle/4);
+		//ver se start bit esta ativado e sincronizar o clock
+		dif = (tRef->tv_nsec) - now;
+	}while(pin==0 && dif<15*mili); //espera ate 15ms
+	
+	if(dif>=15*mili)
+	{	//indicar erro
+		printf("Timeout charStream\n\n");
+		*c='\n';
+		*(c+1)='-';
+		*(c+2)=0;
+		return;
+	}
+	
+	//incNano(tRef, cycle);
+	par=0;
+	dif = 7;
+	*c=0;
+	while(dif>0)
+	{
+		dif--;
+		
+		incNano(tRef, cycle); //espera e le
+		printf("%d", pin);
+		*c+=pin<<(dif);
+		par^=pin;
+	}
+	printf("\n");
+	incNano(tRef, cycle); //paritybit
+	if(par != pin) //erro - configurar comportamento depois
+	{	//indicar erro
+		printf("Invalid parity check - %d %d\n\n", par, pin);
+		*c='\n';
+		*(c+1)='-';
+		*(c+2)=1;
+		return;
+	}
+	
+return;
+}
+
+
+
+
+void cmdRecv(struct timespec *tRef, char *res)
+{
+	printf("Waiting for response...\n");
+	char r[80];//max 75 char
+	int i=0;
+
+	long dif, now = tRef->tv_nsec;
+	
+	//testa o start bit do sensor
+	//sensor deve responder em ate 15ms [18 ciclos]
+	do
+	{	
+		incNano(tRef, cycle/3);
+		dif = (tRef->tv_nsec) - now;
+		//ver se start bit esta ativado e sincronizar o clock
+	}while( (dif<15*mili )&&(pin == 0) );
+	
+	if (dif >= 15*mili)	//timeout
+	{
+		printf("Timeout cmdRecv\n\n");
+		res = 0;
+		return;
+	}
+	
+	incNano(tRef, cycle);	//start bit
+	
+	do
+	{
+		charStream(tRef, &r[i]); // ==========>>>>>>>> entrando com delay grande
+		//incNano(tRef, cycle-2000); //espera ate pouco antes da proxima leitura de letra
+		i++;
+	}while(r[i-1] != '\n');
+	
+	res = r;
+	if(r[i]=='-') res = 0;
+	incNano(tRef, cycle*8);	//espera antes de poder enviar outro comando
+	if (res==0) printf("Error on response\n%s\n", r);
+	else printf("Response was: %s\n", r);
+return;
+}
 
 
 
