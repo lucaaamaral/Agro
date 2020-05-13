@@ -15,15 +15,11 @@ int main(int argc, char *argv[])
 	}
 	
 	
-	int dir = *(mapa+OE);
-	printf("%d", dir);
-	
-	
-	pthread_t t;
-	pthread_create(&t, 0, monitor, 0);
+	//pthread_t t;
+	//pthread_create(&t, 0, monitor, 0);
 	
 	sComm(argc, argv);
-	pthread_join(t, 0);
+	//pthread_join(t, 0);
 	
 	close(fd);
 	munmap(mapa, GPIO0_LEN);
