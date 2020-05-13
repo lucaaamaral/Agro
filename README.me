@@ -13,13 +13,12 @@ Protocolo é definido em 1200 baud, o que significa 1200 mudanças por segundo, 
 A plataforma utilizada é o beaglebone black.
 
 Todos os tempos foram revisados mais de uma vez. 
-O código está bagunçado em um arquivo único, farei um esforço para separá-los a fim de organizar melhor e facilitar solução de erros.
-Funções para fazer acompanhamento e registro independentes em tempo real das saídas deverão ser implementadas.
-Ao que tudo indica, há erro na implementação do programa.
+O código está dividido em diferentes arquivos, farei um esforço para organizá-los melhor e facilitar solução de erros.
+Funções para fazer acompanhamento e registro independentes em tempo real das saídas foram ser implementadas, porém comentadas.
+Ao que tudo indica, há erro no sincronismo das respostas.
 
-Na hora de testar, o sensor não respondeu ao comando emitido, o que sugere que não funciona a função de enviar comando ou de acordar sensores.
-Meu multímetro estava sem bateria para verificar a tensão de saída do pino da placa beaglebone.
-Não tenho osciloscópio disponível para verificar as transições de tensão.
+Na hora de testar, o sensor respondeu ao comando emitido, mas as respostas recebidas falhavam no teste de paridade, o que sugere que o recebimento esteja fora de sincronia.
+A função de acompanhamento mostrou respostas ok.
 
 <b> COMANDOS ÚTEIS </b>
 
