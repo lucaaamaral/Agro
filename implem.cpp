@@ -25,22 +25,15 @@ char* sComm (int num, char *cmd[]) //melhorar retorno das informacoes
 		if ((tempo.tv_nsec)-(tRef.tv_nsec) > 100000) printf("cmdSend took too long to finish: %d\n\n", (tempo.tv_nsec)-(tRef.tv_nsec));
 		else printf("cmdSend sucessful\n\n");
 		
-
 		
-		int j=0;
-		*(mapa+OE)=in;
-
-
+		clock_gettime(CLOCK_MONOTONIC, &tRef);	//preciso zerar isso aqui? delay menor que 100000
 		
-		//clock_gettime(CLOCK_MONOTONIC, &tRef);	//preciso zerar isso aqui? delay menor que 100000
-		
-		/*
 		ret=tRef.tv_nsec;
 		//sensor deve responder em ate 15ms [18 ciclos]
 		cmdRecv(&tRef, res);
 		clock_gettime(CLOCK_MONOTONIC, &tempo); 
 		if ((tempo.tv_nsec)-(tRef.tv_nsec) > 100000) printf("cmdRecv took too long to finish: %d\n\n", (tempo.tv_nsec)-(tRef.tv_nsec));
-		else printf("cmdRecv sucessful\n\n");
+		else printf("cmdRecv sucessful\n%s\n", res);
 		
 		dif=tRef.tv_nsec-ret;
 		if(cmd==0 && dif<87000 && dif>16670) //retry
@@ -54,7 +47,8 @@ char* sComm (int num, char *cmd[]) //melhorar retorno das informacoes
 			printf("%s\n", res);	//imprimir resposta para verificar
 			cmd[i] = res;
 		}
-		*/
+		
+		
 		i++;
 		dif = tRef.tv_nsec-start;
 		if(dif<=sec/1000) 
@@ -94,7 +88,7 @@ void* monitor(void*)
         k=pin;
         myfile << k;
         *(mapa+OE) = dir;
-        incNano(&tRef, cycle);
+        incNano(&tRef, cycle+2000);
     }
     
     myfile.close();
