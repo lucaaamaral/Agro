@@ -42,9 +42,10 @@
 
 void incNano(struct timespec*, long); //incrementa e espera nanosegundos
 void cmdSend(struct timespec, char*, int); //send command
-void charStream (struct timespec*, char*);	//receive a char
+bool charStream (struct timespec*, char*);	//receive a char
 void cmdRecv (struct timespec, char*); //receive response
 char* sComm (int, char**);	//sensor communication
+bool read_bit(struct timespec *);
 
 int *mapa;
 
