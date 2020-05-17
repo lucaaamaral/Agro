@@ -70,14 +70,15 @@ return 0;
 
 void* monitor(void*)
 {
-	//lock(50);
+	//lock(30);
 	int k, tmr=0, dir;
     ofstream myfile;
     myfile.open ("saida.txt");
     struct timespec tRef;
     clock_gettime(CLOCK_MONOTONIC, &tRef);
+    //incNano(&tRef, 20*mili);
     
-    while(tmr<=200)
+    while(tmr<=1000)
     {
     	tmr++;
         dir = (int)*(mapa+OE);
@@ -88,7 +89,8 @@ void* monitor(void*)
         k=pin;
         myfile << k;
         *(mapa+OE) = dir;
-        incNano(&tRef, cycle+2000);
+        incNano(&tRef, cycle/3);
+        if(tmr%100==0) myfile << endl;
     }
     
     myfile.close();
