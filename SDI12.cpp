@@ -48,23 +48,23 @@ void cmdSend(struct timespec *tRef, char *cmd, int len) //nao ok
 	{
 		incNano(tRef, cycle); //acrescimo entre caracteres
 		*(mapa+DATAOUT) = high;	//start bit espera um ciclo
-		printf("1");
+		//printf("1");
 		incNano(tRef, cycle);
 		par=0;
 		
 		for(int i=0; i<7; i++) //data bits
 		{
 			*(mapa+DATAOUT) = ( ((1&(cmd[c]>>i))==1)? low:high); //envia bit por bit invertido
-			printf("%d",(*(mapa+DATAOUT)>>saida)&1);
+			//printf("%d",(*(mapa+DATAOUT)>>saida)&1);
 			par ^= pin;	//xor//set parity
 			incNano(tRef, cycle); //espera um ciclo
 		}
 		//parity bit e espera um ciclo
 		*(mapa+DATAOUT) = ((par&1==1)? high: low);
-		printf("%d",(*(mapa+DATAOUT)>>saida)&1);
+		//printf("%d",(*(mapa+DATAOUT)>>saida)&1);
 		incNano(tRef, cycle);
 		*(mapa+DATAOUT) = low; //stop bit
-		printf("%d ",(*(mapa+DATAOUT)>>saida)&1);
+		//printf("%d ",(*(mapa+DATAOUT)>>saida)&1);
 		c++;
 	}
 	printf("\n");
@@ -75,17 +75,32 @@ return;
 }
 
 
-
-
-void charStream(struct timespec *tRef, char *c)
+bool read_bit(struct timespec *tRef)
 {
-	printf("charStream in... ");
+	bool i1, i2, i3;
+	i1=pin;
+	incNano(tRef, (cycle/3));
+	i2=pin;
+	incNano(tRef, (cycle/3));
+	i3=pin;
+	
+	incNano(tRef, (cycle/3));
+
+	if (i1==i2) return i1;
+	else if(i1==i3) return i1;
+	else return i2;
+	
+
+}
+
+bool charStream(struct timespec *tRef, char *c)
+{
 	long dif, now;
-	bool par=0;
+	bool par=0, k;
 	now = tRef->tv_nsec;
 	do
 	{
-		incNano(tRef, cycle/4);
+		incNano(tRef, cycle/3);
 		//ver se start bit esta ativado e sincronizar o clock
 		dif = (tRef->tv_nsec) - now;
 	}while(pin==0 && dif<15*mili); //espera ate 15ms
@@ -96,34 +111,31 @@ void charStream(struct timespec *tRef, char *c)
 		*c='\n';
 		*(c+1)='-';
 		*(c+2)=0;
-		return;
+		return false;
 	}
 	
-	//incNano(tRef, cycle);
+	incNano(tRef, cycle);
 	par=0;
-	dif = 7;
+	dif = -1;
 	*c=0;
-	while(dif>0)
+	while(dif<6)
 	{
-		dif--;
-		
-		incNano(tRef, cycle); //espera e le
-		printf("%d", pin);
-		*c+=pin<<(dif);
-		par^=pin;
+		dif++;
+		k=read_bit(tRef);
+		*c+=(k^1)<<dif;
+		par^=k;
 	}
-	printf("\n");
-	incNano(tRef, cycle); //paritybit
-	if(par != pin) //erro - configurar comportamento depois
+	//incNano(tRef, cycle); //paritybit
+	if(par != read_bit(tRef)) //erro - configurar comportamento depois
 	{	//indicar erro
 		printf("Invalid parity check - %d %d\n\n", par, pin);
 		*c='\n';
 		*(c+1)='-';
 		*(c+2)=1;
-		return;
+		return false;
 	}
 	
-return;
+return true;
 }
 
 
@@ -137,14 +149,13 @@ void cmdRecv(struct timespec *tRef, char *res)
 
 	long dif, now = tRef->tv_nsec;
 	
-	//testa o start bit do sensor
+	//espera marking do sensor 8,33ms
 	//sensor deve responder em ate 15ms [18 ciclos]
 	do
 	{	
-		incNano(tRef, cycle/3);
 		dif = (tRef->tv_nsec) - now;
 		//ver se start bit esta ativado e sincronizar o clock
-	}while( (dif<15*mili )&&(pin == 0) );
+	}while( (dif<15*mili )&& !charStream(tRef, &r[i]) );
 	
 	if (dif >= 15*mili)	//timeout
 	{
@@ -153,14 +164,12 @@ void cmdRecv(struct timespec *tRef, char *res)
 		return;
 	}
 	
-	incNano(tRef, cycle);	//start bit
-	
+	i++;
 	do
 	{
-		charStream(tRef, &r[i]); // ==========>>>>>>>> entrando com delay grande
-		//incNano(tRef, cycle-2000); //espera ate pouco antes da proxima leitura de letra
+		charStream(tRef, &r[i]); // ====>>>>>>>> entrando com delay grande
 		i++;
-	}while(r[i-1] != '\n');
+	}while(r[i-1] != 10);
 	
 	res = r;
 	if(r[i]=='-') res = 0;
