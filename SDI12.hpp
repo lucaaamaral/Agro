@@ -9,9 +9,12 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <sched.h>
-#include <fstream>
-#include <iostream>
+//#include <fstream> //-- c++
+//#include <iostream>//-- c++
 #include <pthread.h>
+#include <string.h>
+#include <time.h>
+
 
 #define GPIO0_START 0X44E07000
 #define GPIO0_END   0X44E07FFF
@@ -46,6 +49,7 @@ bool charStream (struct timespec*, char*);	//receive a char
 void cmdRecv (struct timespec, char*); //receive response
 char* sComm (int, char**);	//sensor communication
 bool read_bit(struct timespec *);
+void to_file(char*); 
 
 int *mapa;
 
