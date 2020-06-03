@@ -9,6 +9,15 @@ void lock(int lvl)
 	sp.sched_priority = lvl;
 	if(sched_setscheduler(0, SCHED_FIFO, &sp) !=0 ) perror("Erro no setscheduler");
 	
+	int fd = open("/dev/mem", O_RDWR);
+	mapa = (int*)mmap(0, GPIO0_LEN, PROT_READ | PROT_WRITE, MAP_SHARED, fd, GPIO0_START);
+	if(mapa == MAP_FAILED) 
+	{
+			close(fd);
+			perror("Unable to map /dev/mem");
+			exit(EXIT_FAILURE);
+	}
+	
 }
 
 
@@ -39,7 +48,8 @@ return;
 //enviar comando
 void cmdSend(struct timespec *tRef, char *cmd, int len) //nao ok
 {
-	printf("\nSending command... - %s\n", cmd);
+	//printf("\nSending command... - %s\n", cmd);
+	struct timespec tempo;
 	int c=0;
 	int par = 0;
 	//*(mapa+OE) = out;	//set pin as output
@@ -67,10 +77,13 @@ void cmdSend(struct timespec *tRef, char *cmd, int len) //nao ok
 		//printf("%d ",(*(mapa+DATAOUT)>>saida)&1);
 		c++;
 	}
-	printf("\n");
+	//printf("\n");
 	//abandonar controle da linha de dados em ate 7.5ms
 	//colocar pino em tree-state
 	*(mapa+OE) = in;
+	clock_gettime(CLOCK_MONOTONIC, &tempo); 
+	if ((tempo.tv_nsec)-(tRef->tv_nsec) > 100000) printf("cmdSend took too long to finish: %d\n", (tempo.tv_nsec)-(tRef->tv_nsec));
+	else printf("\ncmdSend sucessful\n\n");
 return;
 }
 
@@ -134,19 +147,24 @@ bool charStream(struct timespec *tRef, char *c)
 		*(c+2)=1;
 		return false;
 	}
-	
+	if(*c == 10 && *(c-1)==13)	
+	{
+		*(c-1)=0;
+		return false;
+	}
 return true;
 }
 
 
 
 
-void cmdRecv(struct timespec *tRef, char *res)
+void cmdRecv(struct timespec *tRef, char *r)
 {
 	printf("Waiting for response...\n");
-	char r[80];//max 75 char
+	struct timespec tempo;
+	//char r[80];//max 75 char
 	int i=0;
-
+	bool str;
 	long dif, now = tRef->tv_nsec;
 	
 	//espera marking do sensor 8,33ms
@@ -155,12 +173,12 @@ void cmdRecv(struct timespec *tRef, char *res)
 	{	
 		dif = (tRef->tv_nsec) - now;
 		//ver se start bit esta ativado e sincronizar o clock
-	}while( (dif<15*mili )&& !charStream(tRef, &r[i]) );
+	}while( (dif<15*mili ) && !charStream(tRef, &r[i]) );
 	
 	if (dif >= 15*mili)	//timeout
 	{
 		printf("Timeout cmdRecv\n\n");
-		res = 0;
+		r[0] = 0;
 		return;
 	}
 	
@@ -171,16 +189,36 @@ void cmdRecv(struct timespec *tRef, char *res)
 		i++;
 	}while(r[i-1] != 10);
 	
-	res = r;
-	if(r[i]=='-') res = 0;
+	//res = r;
+	if(r[i]=='-') r = 0;
 	incNano(tRef, cycle*8);	//espera antes de poder enviar outro comando
-	if (res==0) printf("Error on response\n%s\n", r);
+	
+	clock_gettime(CLOCK_MONOTONIC, &tempo); 
+	
+	if (r==0) printf("Error on response\n%s\n", r);
 	else printf("Response was: %s\n", r);
+	
+	if ((tempo.tv_nsec)-(tRef->tv_nsec) > 100000) printf("cmdRecv took too long to finish: %d\n", (tempo.tv_nsec)-(tRef->tv_nsec));
+	else printf("cmdRecv sucessful\n");
 return;
 }
 
 
+void to_file(char *arg)
+{
+	time_t tmp = time(NULL);
+	struct tm *agr = gmtime(&tmp);
+	
+	char *c, *d;
+	asprintf(&c, "%d.%d.%d.txt", agr->tm_mday, agr->tm_mon, agr->tm_year-100);
+	printf("\n%s\n", c);
+	
+	FILE *fd = fopen(c, "a+");
+	if (!fd) perror ("Erro ao abrir arquivo: ");
+	fprintf(fd, "%s\n", arg);
+	fclose(fd);
 
+}
 
 
 
