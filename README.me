@@ -6,7 +6,7 @@ Manual do Sensor:
 
 http://publications.metergroup.com/Integrator%20Guide/18224%20TEROS%2011-12%20Integrator%20Guide.pdf
 
-<b> PROGRESSO ATUAL </b>
+<p> PROGRESSO ATUAL <p/>
 
 Protocolo é definido em 1200 baud, o que significa 1200 mudanças por segundo, ou seja, uma mudança a cada 0.833 ms, ou ainda, 833333 nanossegundos (unidade utilizada no programa).
 
@@ -14,13 +14,14 @@ A plataforma utilizada é o beaglebone black.
 
 Todos os tempos foram revisados mais de uma vez. 
 O código está dividido em diferentes arquivos, farei um esforço para organizá-los melhor e facilitar solução de erros.
-Funções para fazer acompanhamento e registro independentes em tempo real das saídas foram ser implementadas, porém comentadas.
-Ao que tudo indica, há erro no sincronismo das respostas.
+Funções para fazer acompanhamento e registro independentes em tempo real das saídas foram implementadas, porém comentadas.
+Ao que tudo indica, o código não está eficiente o suficiente. Algumas leituras não são recebidas apropriadamente.
 
-Na hora de testar, o sensor respondeu ao comando emitido, mas as respostas recebidas falhavam no teste de paridade, o que sugere que o recebimento esteja fora de sincronia.
+O sensor responde apropriadamente cerca de 70% das vezes que é acionado.
+
 A função de acompanhamento mostrou respostas ok.
 
-<b> COMANDOS ÚTEIS </b>
+<b> COMANDOS ÚTEIS <b/>
 
 1M!
 1D0!
